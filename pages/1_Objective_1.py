@@ -1,33 +1,54 @@
 
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.express as px
 
-# -----------------------------------
+# ----------------------------------
 # PAGE CONFIGURATION
-# -----------------------------------
+# ----------------------------------
 st.set_page_config(
-    page_title="Objective 1 - Household Income",
+    page_title="Objective 1 - Income Analysis",
     page_icon="📊",
     layout="wide"
 )
 
-# -----------------------------------
-# PAGE TITLE
-# -----------------------------------
-st.title("Objective 1: Household Income Analysis")
-st.write(
-    "Analysis of average household income across Malaysian "
-    "states for 2019 and 2022."
-)
+# ----------------------------------
+# CUSTOM DESIGN
+# ----------------------------------
+st.markdown("""
+<style>
+.stApp {
+    background-color: #F7F9FC;
+}
 
-st.markdown("---")
+h1, h2, h3 {
+    color: #1E293B;
+}
 
+[data-testid="stMetric"] {
+    background-color: white;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0px 2px 5px rgba(0,0,0,0.04);
+}
+</style>
+""", unsafe_allow_html=True)
 
-# -----------------------------------
-# LOAD DATASET
-# -----------------------------------
+# ----------------------------------
+# TITLE
+# ----------------------------------
+st.title("📊 Household Income Analysis")
+st.markdown("""
+Explore average household income across Malaysian states
+using interactive visualizations.
+""")
+
+st.divider()
+
+# ----------------------------------
+# LOAD DATA
+# ----------------------------------
 @st.cache_data
 def load_data():
     url = "https://storage.dosm.gov.my/hies/hh_income_district.csv"
@@ -39,161 +60,235 @@ def load_data():
 
     return df
 
-
 df_income = load_data()
 
-
-# -----------------------------------
-# DATA FILTERING
-# -----------------------------------
+# ----------------------------------
+# FILTER DATA
+# ----------------------------------
 df_income_filtered = df_income[
     df_income["year"].isin([2019, 2022])
 ].copy()
 
-
-# -----------------------------------
+# ----------------------------------
 # DATA TRANSFORMATION
-# -----------------------------------
+# ----------------------------------
 df_income_state = (
     df_income_filtered
     .groupby(["state", "year"])
     .agg(
-        avg_district_income_mean=("income_mean", "mean"),
-        avg_district_income_median=("income_median", "mean"),
+        avg_income=("income_mean", "mean"),
+        median_income=("income_median", "mean"),
         total_districts=("district", "nunique")
     )
     .reset_index()
 )
 
-
-# -----------------------------------
-# DISPLAY DATA
-# -----------------------------------
-st.subheader("Household Income Dataset")
-
-st.write(
-    "The following table shows the average household income "
-    "by state and year."
-)
-
-st.dataframe(
-    df_income_state,
-    use_container_width=True
-)
-
-st.markdown("---")
-
-
-# -----------------------------------
-# VISUALIZATION 1: LINE CHART
-# -----------------------------------
-st.subheader("1. Average Household Income Trends by State")
-
-fig1, ax1 = plt.subplots(figsize=(12, 6))
-
-sns.lineplot(
-    data=df_income_state,
-    x="year",
-    y="avg_district_income_mean",
-    hue="state",
-    marker="o",
-    ax=ax1
-)
-
-ax1.set_title("Average Household Income by State (2019–2022)")
-ax1.set_xlabel("Year")
-ax1.set_ylabel("Average Monthly Household Income (RM)")
-ax1.legend(
-    title="State",
-    bbox_to_anchor=(1.02, 1),
-    loc="upper left"
-)
-
-plt.tight_layout()
-st.pyplot(fig1)
-plt.close(fig1)
-
-st.markdown("---")
-
-
-# -----------------------------------
-# VISUALIZATION 2: BAR CHART
-# -----------------------------------
-st.subheader("2. Highest and Lowest Income States (2022)")
-
 df_income_2022 = df_income_state[
     df_income_state["year"] == 2022
 ].copy()
 
-df_income_2022 = df_income_2022.sort_values(
-    by="avg_district_income_mean",
-    ascending=True
+# ----------------------------------
+# KPI CARDS
+# ----------------------------------
+st.subheader("Key Statistics")
+
+if not df_income_2022.empty:
+
+    highest_state = df_income_2022.loc[
+        df_income_2022["avg_income"].idxmax()
+    ]
+
+    lowest_state = df_income_2022.loc[
+        df_income_2022["avg_income"].idxmin()
+    ]
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric(
+        "Average Household Income (2022)",
+        f"RM {df_income_2022['avg_income'].mean():,.0f}"
+    )
+
+    col2.metric(
+        "Highest Income State",
+        highest_state["state"],
+        f"RM {highest_state['avg_income']:,.0f}"
+    )
+
+    col3.metric(
+        "Lowest Income State",
+        lowest_state["state"],
+        f"RM {lowest_state['avg_income']:,.0f}"
+    )
+
+st.divider()
+
+# ----------------------------------
+# VISUALIZATION 1: LINE CHART
+# ----------------------------------
+st.subheader("1. Household Income Trends by State")
+
+fig1 = px.line(
+    df_income_state,
+    x="year",
+    y="avg_income",
+    color="state",
+    markers=True,
+    title="Average Household Income (2019 vs 2022)",
+    labels={
+        "year": "Year",
+        "avg_income": "Average Income (RM)",
+        "state": "State"
+    }
 )
 
-fig2, ax2 = plt.subplots(figsize=(12, 7))
-
-sns.barplot(
-    data=df_income_2022,
-    x="avg_district_income_mean",
-    y="state",
-    ax=ax2
+fig1.update_layout(
+    template="plotly_white",
+    height=550,
+    hovermode="x unified",
+    legend_title="State"
 )
 
-ax2.set_title("Average Household Income by State (2022)")
-ax2.set_xlabel("Average Monthly Household Income (RM)")
-ax2.set_ylabel("State")
+st.plotly_chart(fig1, use_container_width=True)
 
-plt.tight_layout()
-st.pyplot(fig2)
-plt.close(fig2)
+st.divider()
 
-st.markdown("---")
+# ----------------------------------
+# VISUALIZATION 2: DONUT CHART
+# ----------------------------------
+st.subheader("2. Household Income Comparison by State")
 
+if not df_income_2022.empty:
 
-# -----------------------------------
-# VISUALIZATION 3: HEATMAP
-# -----------------------------------
-st.subheader("3. Household Income Distribution by State and Year")
+    pie_data = df_income_2022.sort_values(
+        "avg_income",
+        ascending=False
+    )
+
+    fig2 = px.pie(
+        pie_data,
+        names="state",
+        values="avg_income",
+        hole=0.45,
+        title="Relative Share of Aggregated State Average Income (2022)",
+        color_discrete_sequence=px.colors.qualitative.Set3
+    )
+
+    fig2.update_traces(
+        textposition="inside",
+        textinfo="percent",
+        hovertemplate=(
+            "<b>%{label}</b><br>"
+            "Average income: RM %{value:,.0f}<br>"
+            "Relative share: %{percent}"
+            "<extra></extra>"
+        )
+    )
+
+    fig2.update_layout(
+        template="plotly_white",
+        height=550,
+        legend_title="State"
+    )
+
+    st.plotly_chart(fig2, use_container_width=True)
+
+    st.caption(
+        "Note: The donut chart compares each state's average "
+        "district income relative to the sum of state averages. "
+        "It does not represent the actual share of national income."
+    )
+
+st.divider()
+
+# ----------------------------------
+# VISUALIZATION 3: BAR CHART
+# ----------------------------------
+st.subheader("3. Income Ranking by State (2022)")
+
+if not df_income_2022.empty:
+
+    bar_data = df_income_2022.sort_values(
+        "avg_income",
+        ascending=True
+    )
+
+    fig3 = px.bar(
+        bar_data,
+        x="avg_income",
+        y="state",
+        orientation="h",
+        text="avg_income",
+        title="Average Household Income Ranking",
+        labels={
+            "avg_income": "Average Income (RM)",
+            "state": "State"
+        },
+        color="avg_income",
+        color_continuous_scale="Blues"
+    )
+
+    fig3.update_traces(
+        texttemplate="RM %{text:,.0f}",
+        textposition="outside"
+    )
+
+    fig3.update_layout(
+        template="plotly_white",
+        height=650,
+        coloraxis_showscale=False
+    )
+
+    st.plotly_chart(fig3, use_container_width=True)
+
+st.divider()
+
+# ----------------------------------
+# VISUALIZATION 4: HEATMAP
+# ----------------------------------
+st.subheader("4. Household Income Heatmap")
 
 income_pivot = df_income_state.pivot(
     index="state",
     columns="year",
-    values="avg_district_income_mean"
+    values="avg_income"
 )
 
-fig3, ax3 = plt.subplots(figsize=(9, 8))
-
-sns.heatmap(
+fig4 = px.imshow(
     income_pivot,
-    annot=True,
-    fmt=".0f",
-    cmap="YlGnBu",
-    linewidths=0.5,
-    ax=ax3
+    text_auto=".0f",
+    aspect="auto",
+    color_continuous_scale="YlGnBu",
+    title="Average Household Income by State and Year",
+    labels={
+        "x": "Year",
+        "y": "State",
+        "color": "Average Income (RM)"
+    }
 )
 
-ax3.set_title("Average Household Income Heatmap")
-ax3.set_xlabel("Year")
-ax3.set_ylabel("State")
+fig4.update_layout(
+    template="plotly_white",
+    height=650
+)
 
-plt.tight_layout()
-st.pyplot(fig3)
-plt.close(fig3)
+st.plotly_chart(fig4, use_container_width=True)
 
+st.divider()
 
-# -----------------------------------
+# ----------------------------------
 # CONCLUSION
-# -----------------------------------
-st.markdown("---")
-
+# ----------------------------------
 st.subheader("Conclusion")
 
-st.write("""
-This analysis compares average household income across
-Malaysian states in 2019 and 2022.
+st.markdown("""
+The visualizations provide a comparison of average household
+income across Malaysian states.
 
-The visualizations help identify differences in income
-between states, compare changes over time, and examine
-the distribution of average household income.
+The line chart highlights income differences between years.
+The donut chart compares the relative values of state averages.
+The bar chart ranks states by average income, while the heatmap
+shows income patterns across states and years.
 """)
+
 
