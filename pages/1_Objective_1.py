@@ -30,7 +30,6 @@ h1, h2, h3 {
     padding: 20px;
     border-radius: 12px;
     border: 1px solid #E2E8F0;
-    box-shadow: 0px 2px 5px rgba(0,0,0,0.04);
 }
 </style>
 """, unsafe_allow_html=True)
@@ -39,15 +38,16 @@ h1, h2, h3 {
 # TITLE
 # ----------------------------------
 st.title("📊 Household Income Analysis")
+
 st.markdown("""
-Explore average household income across Malaysian states
-using interactive visualizations.
+Explore average household income across Malaysian
+states through interactive visualizations.
 """)
 
 st.divider()
 
 # ----------------------------------
-# LOAD DATA
+# LOAD DATASET
 # ----------------------------------
 @st.cache_data
 def load_data():
@@ -158,46 +158,44 @@ st.divider()
 # ----------------------------------
 st.subheader("2. Household Income Comparison by State")
 
-if not df_income_2022.empty:
+pie_data = df_income_2022.sort_values(
+    "avg_income",
+    ascending=False
+)
 
-    pie_data = df_income_2022.sort_values(
-        "avg_income",
-        ascending=False
+fig2 = px.pie(
+    pie_data,
+    names="state",
+    values="avg_income",
+    hole=0.45,
+    title="Relative Share of Aggregated State Average Income (2022)",
+    color_discrete_sequence=px.colors.qualitative.Set3
+)
+
+fig2.update_traces(
+    textposition="inside",
+    textinfo="percent",
+    hovertemplate=(
+        "<b>%{label}</b><br>"
+        "Average income: RM %{value:,.0f}<br>"
+        "Relative share: %{percent}"
+        "<extra></extra>"
     )
+)
 
-    fig2 = px.pie(
-        pie_data,
-        names="state",
-        values="avg_income",
-        hole=0.45,
-        title="Relative Share of Aggregated State Average Income (2022)",
-        color_discrete_sequence=px.colors.qualitative.Set3
-    )
+fig2.update_layout(
+    template="plotly_white",
+    height=550,
+    legend_title="State"
+)
 
-    fig2.update_traces(
-        textposition="inside",
-        textinfo="percent",
-        hovertemplate=(
-            "<b>%{label}</b><br>"
-            "Average income: RM %{value:,.0f}<br>"
-            "Relative share: %{percent}"
-            "<extra></extra>"
-        )
-    )
+st.plotly_chart(fig2, use_container_width=True)
 
-    fig2.update_layout(
-        template="plotly_white",
-        height=550,
-        legend_title="State"
-    )
-
-    st.plotly_chart(fig2, use_container_width=True)
-
-    st.caption(
-        "Note: The donut chart compares each state's average "
-        "district income relative to the sum of state averages. "
-        "It does not represent the actual share of national income."
-    )
+st.caption(
+    "Note: This chart compares state average income values "
+    "relative to their combined total. It does not represent "
+    "each state's actual share of national household income."
+)
 
 st.divider()
 
@@ -206,40 +204,38 @@ st.divider()
 # ----------------------------------
 st.subheader("3. Income Ranking by State (2022)")
 
-if not df_income_2022.empty:
+bar_data = df_income_2022.sort_values(
+    "avg_income",
+    ascending=True
+)
 
-    bar_data = df_income_2022.sort_values(
-        "avg_income",
-        ascending=True
-    )
+fig3 = px.bar(
+    bar_data,
+    x="avg_income",
+    y="state",
+    orientation="h",
+    text="avg_income",
+    title="Average Household Income Ranking",
+    labels={
+        "avg_income": "Average Income (RM)",
+        "state": "State"
+    },
+    color="avg_income",
+    color_continuous_scale="Blues"
+)
 
-    fig3 = px.bar(
-        bar_data,
-        x="avg_income",
-        y="state",
-        orientation="h",
-        text="avg_income",
-        title="Average Household Income Ranking",
-        labels={
-            "avg_income": "Average Income (RM)",
-            "state": "State"
-        },
-        color="avg_income",
-        color_continuous_scale="Blues"
-    )
+fig3.update_traces(
+    texttemplate="RM %{text:,.0f}",
+    textposition="outside"
+)
 
-    fig3.update_traces(
-        texttemplate="RM %{text:,.0f}",
-        textposition="outside"
-    )
+fig3.update_layout(
+    template="plotly_white",
+    height=650,
+    coloraxis_showscale=False
+)
 
-    fig3.update_layout(
-        template="plotly_white",
-        height=650,
-        coloraxis_showscale=False
-    )
-
-    st.plotly_chart(fig3, use_container_width=True)
+st.plotly_chart(fig3, use_container_width=True)
 
 st.divider()
 
@@ -281,14 +277,15 @@ st.divider()
 # ----------------------------------
 st.subheader("Conclusion")
 
-st.markdown("""
-The visualizations provide a comparison of average household
-income across Malaysian states.
+st.write("""
+The visualizations compare average household income
+across Malaysian states.
 
-The line chart highlights income differences between years.
-The donut chart compares the relative values of state averages.
-The bar chart ranks states by average income, while the heatmap
-shows income patterns across states and years.
+The line chart highlights income trends, the donut chart
+compares relative state averages, the bar chart ranks
+states by income, and the heatmap displays income
+patterns across states and years.
 """)
+
 
 
